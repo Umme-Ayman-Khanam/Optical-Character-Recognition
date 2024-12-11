@@ -1,105 +1,148 @@
-# Word Segmentation with Scale Space Technique
+# Optical Character Recognition
 
-Implementation of the scale space technique for word segmentation proposed by 
-[R. Manmatha and N. Srimal](http://ciir.cs.umass.edu/pubfiles/mm-27.pdf). 
-Even though the paper is from 1999, the method still achieves good results, is fast, and has a simple implementation. 
-The algorithm takes an **image containing words as input** and **outputs the detected words**.
-Optionally, the words are sorted according to reading order (top to bottom, left to right).
+This repository implements the scale space technique for word segmentation as proposed by [R. Manmatha and N. Srimal](http://ciir.cs.umass.edu/pubfiles/mm-27.pdf). Despite being introduced in 1999, this method remains highly effective, offering excellent results with a simple and fast implementation.
 
-![example](./doc/example.png)
+The algorithm takes an **image containing text** as input and **outputs detected words**. Additionally, it can sort words according to the reading order (top to bottom, left to right).
+
+![Example Output](./doc/example.png)
+
+---
 
 ## Installation
 
-* Go to the root level of the repository
-* Execute `pip install .`
-* Go to `tests/` and execute `pytest` to check if installation worked
+1. Clone the repository and navigate to the root directory.
+2. Install the package:
+   ```bash
+   pip install .
+   ```
+3. Run tests to confirm installation:
+   ```bash
+   cd tests
+   pytest
+   ```
+
+---
 
 ## Usage
 
-This example loads an image of a text line, prepares it for the detector (1), detects words (2), 
-sorts them (3), and finally shows the cropped words (4).
+Here is an example of how to use the package:
 
-````python
+```python
 from word_detector import prepare_img, detect, sort_line
 import matplotlib.pyplot as plt
 import cv2
 
-# (1) prepare image:
-# (1a) convert to grayscale
-# (1b) scale to specified height because algorithm is not scale-invariant
+# Step 1: Prepare the image
+# (a) Convert to grayscale
+# (b) Scale to a specific height as the algorithm is not scale-invariant
 img = prepare_img(cv2.imread('data/line/0.png'), 50)
 
-# (2) detect words in image
+# Step 2: Detect words in the image
 detections = detect(img,
                     kernel_size=25,
                     sigma=11,
                     theta=7,
                     min_area=100)
 
-# (3) sort words in line
+# Step 3: Sort words in a single line
 line = sort_line(detections)[0]
 
-# (4) show word images
+# Step 4: Visualize the detected words
 plt.subplot(len(line), 1, 1)
 plt.imshow(img, cmap='gray')
 for i, word in enumerate(line):
-  print(word.bbox)
-  plt.subplot(len(line), 1, i + 2)
-  plt.imshow(word.img, cmap='gray')
+    print(word.bbox)
+    plt.subplot(len(line), 1, i + 2)
+    plt.imshow(word.img, cmap='gray')
 plt.show()
-````
+```
 
-The repository contains some examples showing how to use the package:
-* Install requirements: `pip install -r requirements.txt`
-* Go to `examples/`
-* Run `python main.py` to detect words in line images (IAM dataset)
-* Or, run `python main.py --data ../data/page --img_height 1000 --theta 5` to run the detector on an image of a page (also from IAM dataset)
+### Running Examples
 
+The repository includes examples demonstrating the package usage:
 
-The package contains the following functions:
-* `prepare_img`: prepares input image for detector
-* `detect`: detect words in image
-* `sort_line`: sort words in a (single) line
-* `sort_multiline`: cluster words into lines, then sort each line separately
+1. Install the required dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+2. Run the examples:
+   ```bash
+   cd examples
+   python main.py
+   ```
+   This will detect words in line images from the IAM dataset.
 
-For more details on the functions and their parameters use `help(function_name)`, e.g. `help(detect)`.
+3. To process a page image:
+   ```bash
+   python main.py --data ../data/page --img_height 1000 --theta 5
+   ```
 
+---
 
-## Algorithm
+## Package Functions
 
-The illustration below shows how the algorithm works:
+The package provides the following key functions:
 
-* top left: input image
-* top right: apply filter to the image
-* bottom left: threshold filtered image
-* bottom right: compute bounding boxes
+- **`prepare_img`**: Prepares the input image for word detection by converting it to grayscale and resizing.
+- **`detect`**: Detects words in the image using the scale space technique.
+- **`sort_line`**: Sorts detected words within a single line.
+- **`sort_multiline`**: Clusters words into lines and sorts them individually.
 
-![illustration](./doc/illustration.png)
+For more details on each function and their parameters, use Python's `help` function. Example:
+```python
+help(detect)
+```
 
-The filter kernel with size=25, sigma=5 and theta=3 is shown below on the left. 
-It models the typical shape of a word, with the width larger than the height (in this case by a factor of 3). 
-On the right the frequency response is shown (DFT of size 100x100). 
-The filter is in fact a low-pass, with different cut-off frequencies in x and y direction.
-![kernel](./doc/kernel.png)
+---
 
-## Output sample
+## Algorithm Overview
 
-![Screenshot](outputv1.png)
+The illustration below provides an overview of the algorithm:
 
+1. **Top Left**: Input image
+2. **Top Right**: Apply the filter to the image
+3. **Bottom Left**: Threshold the filtered image
+4. **Bottom Right**: Compute bounding boxes for the words
 
-## How to select parameters
+![Algorithm Illustration](./doc/illustration.png)
 
-* The algorithm is **not scale-invariant**
-    * The default parameters give good results for a text height of 25-50 pixels
-    * If working with lines, resize the image to 50 pixels height
-    * If working with pages, resize the image so that the words have a height of 25-50 pixels
-* The sigma parameter controls the width of the Gaussian function (standard deviation) along the x-direction. Small
-  values might lead to multiply detection per word (over-segmentation), while large values might lead to a detection
-  containing multiple words (under-segmentation)
-* The kernel size depends on the sigma parameter and should be chosen large enough to contain as much of the non-zero
-  kernel values as possible
-* The average aspect ratio (width/height) of the words to be detected is a good initial guess for the theta parameter
+### Filter Kernel Details
 
-The best way to find the optimal parameters is to use a dataset (e.g. IAM) and optimize the parameters w.r.t. some
-evaluation metric (e.g. intersection over union).
+The kernel models the typical shape of a word, with a width larger than the height (e.g., aspect ratio of 3:1). Below are the kernel (left) and its frequency response (right):
+
+![Kernel and Frequency Response](./doc/kernel.png)
+
+---
+
+## Selecting Parameters
+
+The algorithm is **not scale-invariant**, so proper parameter selection is crucial. Here are some guidelines:
+
+1. **Text Height**:
+   - Default parameters work well for text heights between 25-50 pixels.
+   - Resize line images to ~50 pixels height.
+   - Resize page images so that words are between 25-50 pixels in height.
+
+2. **Sigma (`sigma`)**:
+   - Controls the width of the Gaussian filter along the x-direction.
+   - Small values may cause over-segmentation (multiple detections per word).
+   - Large values may result in under-segmentation (multiple words in one detection).
+
+3. **Kernel Size (`kernel_size`)**:
+   - Should be large enough to encompass most non-zero values of the Gaussian filter.
+
+4. **Theta (`theta`)**:
+   - Represents the average aspect ratio (width/height) of words.
+
+### Parameter Optimization
+
+Use a dataset (e.g., IAM) and an evaluation metric (e.g., Intersection over Union) to fine-tune parameters for optimal performance.
+
+---
+
+## Output Sample
+
+Here is an example of the output generated by the algorithm:
+
+![Output Sample](outputv1.png)
 
